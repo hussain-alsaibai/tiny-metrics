@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Linux, py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run tests
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python -m unittest test_tiny_metrics -v
+
+  test-windows:
+    name: Test (Windows, py3.12)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: |
+          python -m unittest test_tiny_metrics -v
+
+  zero-deps:
+    name: Zero-deps assertion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check for third-party imports
+        run: |
+          ! python -c "
+          import ast, sys
+          tree = ast.parse(open('tiny_metrics.py').read())
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  for n in node.names:
+                      if n.name.split('.')[0] not in {'__future__'}:
+                          print(f'unexpected import: {n.name}'); sys.exit(1)
+              elif isinstance(node, ast.ImportFrom):
+                  if (node.module or '').split('.')[0] not in {'__future__'}:
+                      print(f'unexpected from-import: {node.module}'); sys.exit(1)
+          print('zero-deps OK')
+          "
