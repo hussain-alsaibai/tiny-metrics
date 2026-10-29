@@ -1,4 +1,5 @@
 # tiny-metrics
+[![CI](https://github.com/hussain-alsaibai/tiny-metrics/actions/workflows/ci.yml/badge.svg)](https://github.com/hussain-alsaibai/tiny-metrics/actions/workflows/ci.yml)
 
 **Zero-dependency Prometheus-compatible metrics for Python.**
 
