@@ -34,7 +34,6 @@ jobs:
   test-windows:
     name: Test (Windows, py3.12)
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

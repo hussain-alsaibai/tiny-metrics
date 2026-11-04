@@ -245,6 +245,10 @@ class TestHTTP(unittest.TestCase):
         server = start_http_server(port=0, registry=reg)
         try:
             host, port = server.server_address
+            # server_address[0] is "0.0.0.0" when the server is bound to all
+            # interfaces. Connecting to 0.0.0.0 is undefined: Linux accepts it,
+            # Windows refuses it (WinError 10049). Use the loopback address.
+            host = "127.0.0.1"
             from http.client import HTTPConnection
 
             conn = HTTPConnection(host, port, timeout=2)
@@ -264,6 +268,10 @@ class TestHTTP(unittest.TestCase):
         server = start_http_server(port=0, registry=reg)
         try:
             host, port = server.server_address
+            # server_address[0] is "0.0.0.0" when the server is bound to all
+            # interfaces. Connecting to 0.0.0.0 is undefined: Linux accepts it,
+            # Windows refuses it (WinError 10049). Use the loopback address.
+            host = "127.0.0.1"
             from http.client import HTTPConnection
 
             conn = HTTPConnection(host, port, timeout=2)
@@ -281,6 +289,10 @@ class TestHTTP(unittest.TestCase):
         server = start_http_server(port=0, registry=reg)
         try:
             host, port = server.server_address
+            # server_address[0] is "0.0.0.0" when the server is bound to all
+            # interfaces. Connecting to 0.0.0.0 is undefined: Linux accepts it,
+            # Windows refuses it (WinError 10049). Use the loopback address.
+            host = "127.0.0.1"
             from http.client import HTTPConnection
 
             conn = HTTPConnection(host, port, timeout=2)
