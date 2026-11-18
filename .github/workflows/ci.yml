@@ -15,7 +15,9 @@ permissions:
 jobs:
   test:
     name: Test (Linux, py${{ matrix.python }})
-    runs-on: ubuntu-latest
+    # ubuntu-latest is 26.04 now, which publishes no setup-python build of
+    # 3.9 — the row died in setup before a single test ran.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -45,7 +47,7 @@ jobs:
 
   zero-deps:
     name: Zero-deps assertion
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
