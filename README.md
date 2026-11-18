@@ -186,6 +186,10 @@ start_http_server(port=0, registry=my_registry)    # ephemeral port
 Endpoints:
 - `GET /metrics` → OpenMetrics text format
 - `GET /` → tiny HTML link page
+- `HEAD` on either path → same headers (`Content-Type`, `Content-Length`), no
+  body. Health probes and service meshes send HEAD; before v0.1.1 this
+  answered `501 Unsupported method`, which reads as "service down".
+- anything else → `404` with a framed body (`Content-Length` set)
 
 ### Collectors
 

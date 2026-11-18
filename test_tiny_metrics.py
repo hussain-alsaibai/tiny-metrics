@@ -304,6 +304,79 @@ class TestHTTP(unittest.TestCase):
             server.shutdown()
             server.server_close()
 
+    def test_head_metrics_is_supported(self):
+        """Health probes send HEAD; a 501 makes a healthy service look down."""
+        reg = fresh_registry()
+        Counter("hits_head", "hits", registry=reg).inc(7)
+        server = start_http_server(port=0, registry=reg)
+        try:
+            from http.client import HTTPConnection
+
+            conn = HTTPConnection("127.0.0.1", server.server_address[1], timeout=2)
+            conn.request("HEAD", "/metrics")
+            resp = conn.getresponse()
+            body = resp.read()
+            self.assertEqual(resp.status, 200)
+            self.assertIn("text/plain", resp.getheader("Content-Type"))
+            # HEAD must declare the length the GET would return ...
+            self.assertGreater(int(resp.getheader("Content-Length")), 0)
+            # ... and send none of it.
+            self.assertEqual(body, b"")
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_head_root_is_supported(self):
+        reg = fresh_registry()
+        server = start_http_server(port=0, registry=reg)
+        try:
+            from http.client import HTTPConnection
+
+            conn = HTTPConnection("127.0.0.1", server.server_address[1], timeout=2)
+            conn.request("HEAD", "/")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(resp.read(), b"")
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_404_declares_its_length(self):
+        """An unframed body breaks keep-alive framing for any HTTP/1.1 proxy."""
+        reg = fresh_registry()
+        server = start_http_server(port=0, registry=reg)
+        try:
+            from http.client import HTTPConnection
+
+            conn = HTTPConnection("127.0.0.1", server.server_address[1], timeout=2)
+            conn.request("GET", "/nope")
+            resp = conn.getresponse()
+            self.assertEqual(resp.getheader("Content-Length"), "9")
+            self.assertEqual(resp.read(), b"not found")
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_head_404_declares_length_but_sends_nothing(self):
+        reg = fresh_registry()
+        server = start_http_server(port=0, registry=reg)
+        try:
+            from http.client import HTTPConnection
+
+            conn = HTTPConnection("127.0.0.1", server.server_address[1], timeout=2)
+            conn.request("HEAD", "/nope")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 404)
+            self.assertEqual(resp.getheader("Content-Length"), "9")
+            self.assertEqual(resp.read(), b"")
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
 
 class TestCollectors(unittest.TestCase):
     def test_process_collector_runs(self):

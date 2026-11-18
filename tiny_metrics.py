@@ -911,13 +911,25 @@ class MetricsHandler(BaseHTTPRequestHandler):
     server_version = "tiny_metrics/0.1"
 
     def do_GET(self):  # noqa: N802 (BaseHTTPRequestHandler convention)
+        self._route(write_body=True)
+
+    def do_HEAD(self):  # noqa: N802 (BaseHTTPRequestHandler convention)
+        # Prometheus's scrape protocol is GET, but HEAD is what every generic
+        # uptime checker and service mesh health probe sends. BaseHTTPRequestHandler
+        # answers an unimplemented method with 501, so before this a monitor
+        # reported "upstream does not support HEAD" for a service whose metrics
+        # endpoint was healthy. HEAD returns the same headers and no body.
+        self._route(write_body=False)
+
+    def _route(self, *, write_body: bool) -> None:
         if self.path == "/metrics" or self.path.startswith("/metrics?"):
             body = generate_latest(self.registry)
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            if write_body:
+                self.wfile.write(body)
             return
         if self.path == "/" or self.path.startswith("/?"):
             body = (
@@ -930,12 +942,20 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            if write_body:
+                self.wfile.write(body)
             return
+        body = b"not found"
         self.send_response(404)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
+        # A 404 with no Content-Length cannot be framed by a keep-alive
+        # client: it either waits for EOF or reads the next response's status
+        # line as body bytes. HTTP/1.0 defaults to close-on-finish so it looked
+        # harmless, but any proxy speaking 1.1 to us reuses the connection.
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(b"not found")
+        if write_body:
+            self.wfile.write(body)
 
     def log_message(self, format: str, *args) -> None:  # noqa: A002
         # Silence stderr access logs by default; users can override.
